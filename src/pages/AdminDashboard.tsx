@@ -150,181 +150,45 @@ function CoursesTab() {
   const [items, setItems] = useState<any[]>([]);
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
-  const [duration, setDuration] = useState('');
-  const [price, setPrice] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    return onSnapshot(
-      collection(db, 'courses'),
-      (snapshot) => {
-        setItems(
-          snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }))
-        );
-      },
-      (error) => console.warn('fetch courses error:', error)
-    );
+    return onSnapshot(collection(db, 'courses'), (snapshot) => {
+      setItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => console.warn("fetch courses error:", error));
   }, []);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!title) return;
-
-    try {
-      setLoading(true);
-
-      let imageUrl = '';
-
-      // Upload image to Firebase Storage
-      if (imageFile) {
-        const imageRef = ref(
-          storage,
-          `courses/${Date.now()}-${imageFile.name}`
-        );
-
-        await uploadBytes(imageRef, imageFile);
-        imageUrl = await getDownloadURL(imageRef);
-      }
-
-      await addDoc(collection(db, 'courses'), {
-        title,
-        desc,
-        duration,
-        price,
-        imageUrl,
-        createdAt: new Date(),
-      });
-
-      // Reset form
-      setTitle('');
-      setDesc('');
-      setDuration('');
-      setPrice('');
-      setImageFile(null);
-    } catch (error) {
-      console.error('Error adding course:', error);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    await addDoc(collection(db, 'courses'), { title, desc, createdAt: new Date() });
+    setTitle(''); setDesc(''); setLoading(false);
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteDoc(doc(db, 'courses', id));
-  };
+  const handleDelete = async (id: string) => { await deleteDoc(doc(db, 'courses', id)); };
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">
-        Manage Courses
-      </h2>
-
+      <h2 className="text-2xl font-bold mb-6">Manage Courses</h2>
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
-        <h3 className="font-bold text-lg mb-4">
-          Add New Course
-        </h3>
-
+        <h3 className="font-bold text-lg mb-4">Add New Course</h3>
         <form onSubmit={handleAdd} className="space-y-4">
-
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Course Title"
-            className="w-full px-4 py-2 border rounded-md"
-            required
-          />
-
-          <textarea
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            placeholder="Course Description"
-            className="w-full px-4 py-2 border rounded-md"
-            required
-          />
-
-          <input
-            type="text"
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            placeholder="Course Duration (e.g. 3 Months)"
-            className="w-full px-4 py-2 border rounded-md"
-            required
-          />
-
-          <input
-            type="text"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            placeholder="Course Price (e.g. ₹5000)"
-            className="w-full px-4 py-2 border rounded-md"
-            required
-          />
-
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) =>
-              setImageFile(e.target.files?.[0] || null)
-            }
-            className="w-full px-4 py-2 border rounded-md"
-          />
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-primary text-white px-6 py-2 rounded-md hover:bg-secondary disabled:opacity-50"
-          >
+          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Course Title (e.g. IT Essential / CCC)" className="w-full px-4 py-2 border rounded-md" required />
+          <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Short Description" className="w-full px-4 py-2 border rounded-md" required />
+          <button type="submit" disabled={loading} className="bg-primary text-white px-6 py-2 rounded-md hover:bg-secondary disabled:opacity-50">
             {loading ? 'Adding...' : 'Add Course'}
           </button>
-
         </form>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="bg-white p-4 rounded-xl border shadow-sm"
-          >
-
-            {item.imageUrl && (
-              <img
-                src={item.imageUrl}
-                alt={item.title}
-                className="w-full h-48 object-cover rounded-lg mb-3"
-              />
-            )}
-
-            <h4 className="font-bold text-lg">
-              {item.title}
-            </h4>
-
-            <p className="text-sm text-gray-600 mt-2">
-              {item.desc}
-            </p>
-
-            <div className="mt-3 space-y-1">
-              <p className="text-sm font-medium">
-                Duration: {item.duration}
-              </p>
-
-              <p className="text-sm font-medium text-green-600">
-                Price: {item.price}
-              </p>
+        {items.map(item => (
+          <div key={item.id} className="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-start">
+            <div>
+              <h4 className="font-bold">{item.title}</h4>
+              <p className="text-sm text-gray-600 mt-1">{item.desc}</p>
             </div>
-
-            <button
-              onClick={() => handleDelete(item.id)}
-              className="mt-4 text-red-500 text-sm font-medium hover:underline"
-            >
-              Delete
-            </button>
-
+            <button onClick={() => handleDelete(item.id)} className="text-red-500 text-sm font-medium hover:underline">Delete</button>
           </div>
         ))}
       </div>
