@@ -1,10 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
-import { db, storage } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { Book, Users, Image as ImageIcon, MessageSquare, LayoutDashboard, LogOut, Loader2, Bell } from 'lucide-react';
+
+const resizeImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
 
 export default function AdminDashboard() {
   const { user, isAdmin, logOut } = useAuth();
@@ -227,11 +263,16 @@ function GalleryTab() {
     e.preventDefault();
     if (!file) return;
     setLoading(true);
-    const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
-    const uploadTask = await uploadBytesResumable(storageRef, file);
-    const url = await getDownloadURL(uploadTask.ref);
-    await addDoc(collection(db, 'gallery'), { url, category, createdAt: new Date() });
-    setFile(null); setLoading(false);
+    try {
+      const url = await resizeImage(file);
+      await addDoc(collection(db, 'gallery'), { url, category, createdAt: new Date() });
+      setFile(null); 
+    } catch (error) {
+      console.error(error);
+      alert("Failed to upload image.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (id: string) => { await deleteDoc(doc(db, 'gallery', id)); };
@@ -289,11 +330,16 @@ function FacultyTab() {
     e.preventDefault();
     if (!file || !name) return;
     setLoading(true);
-    const storageRef = ref(storage, `faculty/${Date.now()}_${file.name}`);
-    const uploadTask = await uploadBytesResumable(storageRef, file);
-    const url = await getDownloadURL(uploadTask.ref);
-    await addDoc(collection(db, 'faculty'), { name, role, exp, img: url, createdAt: new Date() });
-    setName(''); setRole(''); setExp(''); setFile(null); setLoading(false);
+    try {
+      const url = await resizeImage(file);
+      await addDoc(collection(db, 'faculty'), { name, role, exp, img: url, createdAt: new Date() });
+      setName(''); setRole(''); setExp(''); setFile(null);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to upload file.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (id: string) => { await deleteDoc(doc(db, 'faculty', id)); };
@@ -344,11 +390,16 @@ function TestimonialsTab() {
     e.preventDefault();
     if (!file || !name) return;
     setLoading(true);
-    const storageRef = ref(storage, `testimonials/${Date.now()}_${file.name}`);
-    const uploadTask = await uploadBytesResumable(storageRef, file);
-    const url = await getDownloadURL(uploadTask.ref);
-    await addDoc(collection(db, 'testimonials'), { name, text, img: url, createdAt: new Date() });
-    setName(''); setText(''); setFile(null); setLoading(false);
+    try {
+      const url = await resizeImage(file);
+      await addDoc(collection(db, 'testimonials'), { name, text, img: url, createdAt: new Date() });
+      setName(''); setText(''); setFile(null);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to upload image.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (id: string) => { await deleteDoc(doc(db, 'testimonials', id)); };
