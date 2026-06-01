@@ -1,0 +1,6 @@
+{
+  "name": "BFIT Institute",
+  "description": "Professional website for BFIT Institute of Computer Science",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

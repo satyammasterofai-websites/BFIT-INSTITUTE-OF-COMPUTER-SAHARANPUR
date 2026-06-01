@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.email == 'satyammasterofai@gmail.com' ||
+        request.auth.token.email == 'bfitsaharanpur@gmail.com'
+      );
+    }
+    
+    match /inquiries/{document} {
+      allow create: if true; // anyone can submit an inquiry
+      allow read, update, delete: if isAdmin();
+    }
+    
+    match /courses/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /gallery/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /faculty/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /testimonials/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /announcements/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
