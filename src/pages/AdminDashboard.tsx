@@ -196,6 +196,57 @@ function CoursesTab() {
   );
 }
 
+function AnnouncementsTab() {
+  const [items, setItems] = useState<any[]>([]);
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    return onSnapshot(collection(db, 'announcements'), (snapshot) => {
+      setItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => b.createdAt - a.createdAt));
+    }, (error) => console.warn("fetch announcements error:", error));
+  }, []);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title) return;
+    setLoading(true);
+    await addDoc(collection(db, 'announcements'), { title, content, createdAt: new Date().getTime() });
+    setTitle(''); setContent(''); setLoading(false);
+  };
+
+  const handleDelete = async (id: string) => { await deleteDoc(doc(db, 'announcements', id)); };
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-6">Announcements</h2>
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
+        <h3 className="font-bold text-lg mb-4">Post Announcement</h3>
+        <form onSubmit={handleAdd} className="space-y-4">
+          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Announcement Title" className="w-full px-4 py-2 border rounded-md" required />
+          <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Announcement Content" className="w-full px-4 py-2 border rounded-md" required />
+          <button type="submit" disabled={loading} className="bg-primary text-white px-6 py-2 rounded-md hover:bg-secondary disabled:opacity-50">
+            {loading ? 'Posting...' : 'Post Announcement'}
+          </button>
+        </form>
+      </div>
+      <div className="space-y-4">
+        {items.map(item => (
+          <div key={item.id} className="bg-white p-4 rounded-xl border shadow-sm">
+            <div className="flex justify-between items-start mb-2">
+              <h4 className="font-bold">{item.title}</h4>
+              <button onClick={() => handleDelete(item.id)} className="text-red-500 text-sm font-medium hover:underline">Delete</button>
+            </div>
+            <p className="text-gray-700">{item.content}</p>
+            <p className="text-xs text-gray-400 mt-2">{new Date(item.createdAt).toLocaleDateString()}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function GalleryTab() {
   const [items, setItems] = useState<any[]>([]);
   const [category, setCategory] = useState('About Section');
