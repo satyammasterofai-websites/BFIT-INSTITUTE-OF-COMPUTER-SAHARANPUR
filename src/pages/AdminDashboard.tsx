@@ -150,6 +150,9 @@ function CoursesTab() {
   const [items, setItems] = useState<any[]>([]);
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
+  const [duration, setDuration] = useState('');
+  const [price, setPrice] = useState('');
+  const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -158,12 +161,39 @@ function CoursesTab() {
     }, (error) => console.warn("fetch courses error:", error));
   }, []);
 
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setLoading(true);
+      try {
+        const filesArray = Array.from(e.target.files) as File[];
+        const convertedImages = await Promise.all(filesArray.map((f: File) => resizeImage(f)));
+        setImages(prev => [...prev, ...convertedImages]);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to process images.");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title) return;
+    if (!title || !desc) return;
     setLoading(true);
-    await addDoc(collection(db, 'courses'), { title, desc, createdAt: new Date() });
-    setTitle(''); setDesc(''); setLoading(false);
+    try {
+      await addDoc(collection(db, 'courses'), { title, desc, duration, price, images, createdAt: new Date() });
+      setTitle(''); setDesc(''); setDuration(''); setPrice(''); setImages([]);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to add course.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (id: string) => { await deleteDoc(doc(db, 'courses', id)); };
@@ -175,20 +205,52 @@ function CoursesTab() {
         <h3 className="font-bold text-lg mb-4">Add New Course</h3>
         <form onSubmit={handleAdd} className="space-y-4">
           <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Course Title (e.g. IT Essential / CCC)" className="w-full px-4 py-2 border rounded-md" required />
-          <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Short Description" className="w-full px-4 py-2 border rounded-md" required />
-          <button type="submit" disabled={loading} className="bg-primary text-white px-6 py-2 rounded-md hover:bg-secondary disabled:opacity-50">
+          <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Description of Course" className="w-full px-4 py-2 border rounded-md" required rows={3} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input type="text" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Duration (e.g. 6 Months)" className="w-full px-4 py-2 border rounded-md bg-gray-50" />
+            <input type="text" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price (e.g. 5000 INR)" className="w-full px-4 py-2 border rounded-md bg-gray-50" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700">Course Photo Gallery (Optional)</label>
+            <input type="file" multiple accept="image/*" onChange={handleImageChange} className="w-full px-4 py-2 border rounded-md bg-gray-50 text-sm" />
+            {images.length > 0 && (
+              <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+                {images.map((img, i) => (
+                  <div key={i} className="relative w-20 h-20 flex-shrink-0">
+                    <img src={img} alt="preview" className="w-full h-full object-cover rounded-md border shadow-sm" />
+                    <button type="button" onClick={() => removeImage(i)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shadow hover:bg-red-600 transition-colors">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <button type="submit" disabled={loading} className="bg-primary text-white px-6 py-2 rounded-md hover:bg-secondary disabled:opacity-50 transition-colors flex items-center gap-2">
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading ? 'Adding...' : 'Add Course'}
           </button>
         </form>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {items.map(item => (
-          <div key={item.id} className="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-start">
-            <div>
-              <h4 className="font-bold">{item.title}</h4>
-              <p className="text-sm text-gray-600 mt-1">{item.desc}</p>
+          <div key={item.id} className="bg-white p-5 rounded-xl border shadow-sm flex flex-col justify-between items-start relative group">
+            <div className="w-full">
+              <div className="flex justify-between items-start gap-4">
+                <h4 className="font-bold text-gray-900 border-b pb-2 w-full">{item.title}</h4>
+                <button onClick={() => handleDelete(item.id)} className="text-red-500 text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-red-50 px-2 py-1 rounded">Delete</button>
+              </div>
+              <div className="mt-2 text-xs flex gap-3 text-primary font-semibold">
+                {item.duration && <span>🕒 {item.duration}</span>}
+                {item.price && <span>💳 {item.price}</span>}
+              </div>
+              <p className="text-sm text-gray-700 mt-3 line-clamp-3 leading-relaxed">{item.desc}</p>
+              {item.images && item.images.length > 0 && (
+                <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                  {item.images.map((img: string, i: number) => (
+                    <img key={i} src={img} className="w-12 h-12 object-cover rounded-md shadow-sm border" alt="gallery"/>
+                  ))}
+                </div>
+              )}
             </div>
-            <button onClick={() => handleDelete(item.id)} className="text-red-500 text-sm font-medium hover:underline">Delete</button>
           </div>
         ))}
       </div>
